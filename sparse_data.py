@@ -37,22 +37,33 @@ class Sparse_Data(Data):
         self.path_to_solubility = solubility_file
         self.sim_name = simulator_name
 
+        self.set_boxes()
+
+    def set_boxes(self,bbox=()):
+
+        if not bbox:
+            xm,xM,ym,yM,zm,zM = (0.0,2.8,0.0,.01,-1.2,0.0)
+        else:
+            xm,xM,ym,yM,zm,zM = bbox
+
+        Lx = xM - xm
+        Ly = yM - ym
+        Lz = zM - zm
+
         # geom in meters
         if self.sim_name == "GEOS":
-            self.boxes = {'Whole': [(0.0, 0.0, -1.2), (2.8, .01, 0.0)]}
-            self.PO1 = [1.5, -0.7]
-            self.PO2 = [1.7, -0.1]
+            self.boxes = {'Whole': [(xm,ym,zm), (xM, yM, zM)]}
+            self.PO1 = [1.5/2.8*Lx, -0.7/1.2*Lz]
+            self.PO2 = [1.7/2.8*Lx, -0.1/1.2*Lz]
             offx, offz = (0., 0.)
             # origin
             Ox, Oy, Oz = self.boxes['Whole'][0]
-            # full length
-            Lx, Ly, Lz = self.boxes['Whole'][1]
-            Lx -= Ox
-            Ly -= Oy
-            Lz -= Oz
+            # # full length
+
 
             self.boxes['A'] = [(Ox + 1.1 / 2.8 * Lx, Oy, Oz), (Ox + Lx - offx, Oy + Ly, Oz + 0.6 / 1.2 * Lz + offz)]
-            self.boxes['B'] = [(Ox + offx, Oy, Oz + 0.6 / 1.2 * Lz + offz), (Ox + 1.1 / 2.8 * Lx, Oy + Ly, Oz + Lz + offz)]
+            self.boxes['B'] = [(Ox + offx, Oy, Oz + 0.6 / 1.2 * Lz + offz),
+                               (Ox + 1.1 / 2.8 * Lx, Oy + Ly, Oz + Lz + offz)]
             self.boxes['C'] = [(Ox + 1.1 / 2.8 * Lx, Oy, Oz + 0.1 / 1.2 * Lz + offz),
                                (Ox + 2.6 / 2.8 * Lx, Oy + Ly, Oz + 0.5 / 1.2 * Lz + offz)]
 
@@ -70,18 +81,19 @@ class Sparse_Data(Data):
             Lz -= Oz
 
             self.boxes['A'] = [(Ox + 1.1 / 2.8 * Lx, Oy, Oz), (Ox + Lx - offx, Oy + Ly, Oz + 0.6 / 1.2 * Lz + offz)]
-            self.boxes['B'] = [(Ox + offx, Oy, Oz + 0.6 / 1.2 * Lz + offz), (Ox + 1.1 / 2.8 * Lx, Oy + Ly, Oz + Lz + offz)]
+            self.boxes['B'] = [(Ox + offx, Oy, Oz + 0.6 / 1.2 * Lz + offz),
+                               (Ox + 1.1 / 2.8 * Lx, Oy + Ly, Oz + Lz + offz)]
             self.boxes['C'] = [(Ox + 1.1 / 2.8 * Lx, Oy, Oz + 0.1 / 1.2 * Lz + offz),
                                (Ox + 2.6 / 2.8 * Lx, Oy + Ly, Oz + 0.5 / 1.2 * Lz + offz)]
-
         self.schedule = np.arange(0, 5 * Conversion.SEC2DAY, 30000.)
 
         if self.version == 'b':
-            for name in ['Whole', 'A', 'B', 'C'] :
-                self.boxes[name] = [(item[0] * 3000, 1. / 0.01 * item[1], item[2] * 1000) for item in
-                                   self.boxes[name]]
-            self.PO1 = [self.PO1[0] * 3000, self.PO1[1] * 1000]
-            self.PO2 = [self.PO2[0] * 3000, self.PO2[1] * 1000]
+            if not bbox:
+                for name in ['Whole', 'A', 'B', 'C']:
+                    self.boxes[name] = [(item[0] * 3000, 1. / 0.01 * item[1], item[2] * 1000) for item in
+                                        self.boxes[name]]
+                self.PO1 = [self.PO1[0] * 3000, self.PO1[1] * 1000]
+                self.PO2 = [self.PO2[0] * 3000, self.PO2[1] * 1000]
             self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 10 * Conversion.SEC2TENTHOFYEAR)
             self.schedule = np.arange(0., 700 * Conversion.SEC2YEAR, 50 * Conversion.SEC2YEAR)
             ## tmp for OPM
@@ -91,17 +103,29 @@ class Sparse_Data(Data):
 
             # self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 1000 * Conversion.SEC2YEAR / 200)
             # self.schedule = np.arange(0., 615*Conversion.SEC2YEAR, 5*Conversion.SEC2YEAR)
-            self.boxes['Whole'] = [(item[0] * 3000, 5000. / 0.01 * item[1], item[2] * 1000) for item in
-                                   self.boxes['Whole']]
-            self.boxes['Whole'][0] = (0., 0., 0.)
-            self.PO1 = [self.PO1[0] * 3000, 2500, (self.PO1[1] + 1.2) * 1000]
-            self.PO2 = [self.PO2[0] * 3000, 2500, (self.PO2[1] + 1.2) * 1000]
-            offx, offz = (100., 150.)
+            #TODO refactor omg
+            if not bbox:
+                self.boxes['Whole'] = [(item[0] * 3000, 5000. / 0.01 * item[1], item[2] * 1000) for item in
+                                       self.boxes['Whole']]
+                self.boxes['Whole'][0] = (0., 0., 0.)
+                Ox,Oy,Oz = self.boxes['Whole'][0]
+                Lx, Ly, Lz = self.boxes['Whole'][1]
+                Lx -= Ox
+                Ly -= Oy
+                Lz -= Oz
+                self.boxes['A'] = [(Ox + 1.1 / 2.8 * Lx, Oy, Oz), (Ox + Lx - offx, Oy + Ly, Oz + 0.6 / 1.2 * Lz + offz)]
+                self.boxes['B'] = [(Ox + offx, Oy, Oz + 0.6 / 1.2 * Lz + offz),
+                                   (Ox + 1.1 / 2.8 * Lx, Oy + Ly, Oz + Lz + offz)]
+                self.boxes['C'] = [(Ox + 1.1 / 2.8 * Lx, Oy, Oz + 0.1 / 1.2 * Lz + offz),
+                                   (Ox + 2.6 / 2.8 * Lx, Oy + Ly, Oz + 0.5 / 1.2 * Lz + offz)]
 
-
+                self.PO1 = [self.PO1[0] * 3000, 2500, (self.PO1[1] + 1.2) * 1000]
+                self.PO2 = [self.PO2[0] * 3000, 2500, (self.PO2[1] + 1.2) * 1000]
 
     def process(self, directory, ifile, use_smry = False):
 
+        bbox = super().bounding_box(ifile)
+        self.set_boxes(bbox)
         super().process(directory, ifile)
         self._write_(directory, ifile, use_smry)
         self._plot_(directory)
@@ -193,6 +217,8 @@ class Sparse_Data(Data):
             # #deal sealTot
             line.append(
                 self._integrate_2_(pts_from_vtk, fields['mSeal'], self.boxes['Whole']))
+            if self.version is 'b':
+                line.append(self._integrate_3_(pts_from_vtk, fields['mTotal'], self.boxes['Whole']))
         else:
             for box_name, box in self.boxes.items():
                 if box_name in ['A', 'B']:
@@ -207,10 +233,14 @@ class Sparse_Data(Data):
                     self._integrate_gradient_3_(fn['M_C'], fn['vol'], self.boxes['C'], (150, 10, 50)))
             # #deal sealTot
             line.append(self._integrate_3_(pts_from_vtk, fields['mSeal'], self.boxes['Whole']))
+            line.append(self._integrate_3_(pts_from_vtk, fields['mTotal'], self.boxes['Whole']))
 
-        return pd.DataFrame(data=[line],
-                            columns= ['t[s]', 'p1[Pa]', 'p2[Pa]', 'mobA[kg]', 'immA[kg]', 'dissA[kg]', 'sealA[kg]',
-                'mobB[kg]', 'immB[kg]', 'dissB[kg]', 'sealB[kg]', 'M_C[m]', 'sealTot[kg]'])
+        cols= ['t[s]', 'p1[Pa]', 'p2[Pa]', 'mobA[kg]', 'immA[kg]', 'dissA[kg]', 'sealA[kg]',
+                       'mobB[kg]', 'immB[kg]', 'dissB[kg]', 'sealB[kg]', 'M_C[m]', 'sealTot[kg]']
+        if self.version in ['b','c']:
+            cols.append('boundsMass[kg]')
+
+        return pd.DataFrame(data=[line], columns=cols)
 
     def _write_(self, directory, ifile, use_smry : bool):
         from tqdm import tqdm

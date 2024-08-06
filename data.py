@@ -52,11 +52,11 @@ class Data(metaclass=ABCMeta):
                                      'phaseMobility_0': 'krg',
                                      'phaseMobility_1': 'krw'}
 
-            self.formula = {'mImmobile': 'if(krg<0.001, rG*satg*poro*vol)',
-                            'mMobile': 'if(krg>0.001,rG*satg*poro*vol)',
+            self.formula = {'mImmobile': 'if(krg<8000, rG*satg*poro*vol)',
+                            'mMobile': 'if(krg>8000,rG*satg*poro*vol)',
                             'mDissolved': 'rL*mCO2*poro*vol*satw',
                             'mSeal': 'if(sealtag > 0.0, rL*mCO2*poro*vol*satw + rG*satg*poro*vol)',
-                            'mTotal': 'rL*mCO2*poro*vol*satw + rG*poro*vol*satg'}
+                            'mTotal': 'if(vol>5e4, rL*mCO2*poro*vol*satw + rG*poro*vol*satg)'}
 
         elif simulator_name == "OPM":
             self.name_indirection = { 'pressure_water': 'pres',
@@ -118,6 +118,30 @@ class Data(metaclass=ABCMeta):
         #try NearestNDInterpolator(...)
         return scipy.interpolate.NearestNDInterpolator(np.asarray([x, y, z]).transpose(), disc_func)
         # return scipy.interpolate.LinearNDInterpolator(np.asarray([x, y, z]).transpose(), disc_func, fill_value=0.0)
+
+    def bounding_box(self,pvdfile):
+        import vtk
+        if self._get_filename_(pvdfile, 0).split('.')[-1] == 'vtm':
+            reader = vtk.vtkXMLMultiBlockDataReader()
+            reader.SetFileName(self._get_filename_(pvdfile, 0))
+            reader.Update()
+
+            it = reader.GetOutput().NewIterator()
+            it.InitTraversal()
+            _xm,_xM,_ym,_yM,_zm,_zM = (0.,0.,0.,0.,0.,0.)
+            while not it.IsDoneWithTraversal():
+                xm,xM,ym,yM,zm,zM = reader.GetOutput().GetDataSet(it).GetBounds()
+                _xm = min(xm,_xm)
+                _xM = max(xM,_xM)
+                _ym = min(ym,_ym)
+                _yM = max(yM,_yM)
+                _zm = min(zm,_zm)
+                _zM = max(zM,_zM)
+                it.GoToNextItem()
+        else:
+            raise NotImplemented()
+
+        return (_xm,_xM,_ym,_yM,_zm,_zM )
 
     def _process_time_(self, pvdfile, time, olist):
 
