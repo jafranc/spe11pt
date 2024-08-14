@@ -1,3 +1,5 @@
+import copy
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -95,7 +97,7 @@ class Sparse_Data(Data):
                 self.PO1 = [self.PO1[0] * 3000, self.PO1[1] * 1000]
                 self.PO2 = [self.PO2[0] * 3000, self.PO2[1] * 1000]
             self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 10 * Conversion.SEC2TENTHOFYEAR)
-            self.schedule = np.arange(0., 700 * Conversion.SEC2YEAR, 50 * Conversion.SEC2YEAR)
+            self.schedule = np.arange(0., 885 * Conversion.SEC2YEAR, 50 * Conversion.SEC2YEAR)
             ## tmp for OPM
             # self.schedule = np.arange(1000* Conversion.SEC2YEAR, 2000*Conversion.SEC2YEAR, 5* Conversion.SEC2YEAR)
         elif self.version == 'c':
@@ -184,6 +186,11 @@ class Sparse_Data(Data):
             # convert it to kgCO2/m3Brine
             fields['mCO2Max'] = ff(fields['pres'], fields['temp']) * fields['rL']
         self.formula['M_C'] = 'mCO2/mCO2Max'
+
+        #discarding buffers
+        ii = np.where(fields['vol']>5e4)
+        fields['invol'] = copy.deepcopy(fields['vol'])
+        fields['invol'][ii] = 0
 
         for key, form in self.formula.items():
             fields[key] = self.process_keys(form, fields)

@@ -22,6 +22,7 @@ class Dense_Data(Data):
             self.offset = [0., 0., -1200.]
             #
             self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 50 * Conversion.SEC2TENTHOFYEAR)
+            self.schedule = [ item * Conversion.SEC2YEAR for item in [50,200,400,600,885]]
             self.filename_converter, self.filename_marker = (Conversion.SEC2YEAR, 'y')
         elif version[0] == 'c':
             self.phydims = (2.8 * 3000, 5000., 1.2 * 1000)
@@ -98,7 +99,8 @@ class Dense_Data(Data):
                                 'mCO2': ' mass fraction of CO2 in liquid[-]',
                                 'temp': ' temperature[C]'}
 
-        for itime, time in enumerate(self.schedule[::int(len(self.schedule) / 10)][1:]):
+        # for itime, time in enumerate(self.schedule[::int(len(self.schedule) / 10)][1:]):
+        for itime, time in enumerate(self.schedule):
             import pandas as pd
             fname = './' + directory + '/spatial_map_' + "{time:2}".format(
                 time=time / self.filename_converter) + self.filename_marker + '.csv'
@@ -153,11 +155,21 @@ class Dense_Data(Data):
         for key, fig in figdict.items():
             if ny == 1:
                 ax = fig.add_subplot(3, 3, itime + 1)
+                if key == 'satg':
+                    cbounds = (0.,1.)
+                elif key == 'mCO2':
+                    cbounds = (0.,50e-3)
+                elif key == 'temp':
+                    cbounds = (20,70)
+                else:
+                    raise NotImplemented()
                 xy = np.asarray([self.x.flatten(), self.z.flatten()]).transpose()
                 im = ax.pcolormesh(xgrid, zgrid,
                                    np.reshape(fn(key).to_numpy(), (nx, nz)).transpose(),
                                    shading='flat',
-                                   cmap='coolwarm')
+                                   cmap='coolwarm',
+                                   vmax=cbounds[1],
+                                   vmin=cbounds[0])
                 ax.axis([self.x.min(), self.x.max(), self.z.min(), self.z.max()])
                 ax.axis('scaled')
                 # fig.colorbar(im, orientation='horizontal')

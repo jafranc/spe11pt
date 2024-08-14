@@ -70,10 +70,11 @@ class Data(metaclass=ABCMeta):
                                      'relativePerm_gas': 'krg',
                                      'relativePerm_water': 'krw'}
             # vol will be computed if not present
-            self.formula = {'mImmobile': 'if(krg<0.001, rG*satg*poro*vol)',
-                            'mMobile': 'if(krg>0.001,rG*satg*poro*vol)',
-                            'mDissolved': 'rL*mCO2*poro*vol*satw',
-                            'mSeal': 'if(sealtag > 0.0, rL*mCO2*poro*vol*satw + rG*satg*poro*vol)',
+            # invol is copy of vol excluding buffers
+            self.formula = {'mImmobile': 'if(krg<8000, rG*satg*poro*invol)',
+                            'mMobile': 'if(krg>8000,rG*satg*poro*invol)',
+                            'mDissolved': 'rL*mCO2*poro*invol*satw',
+                            'mSeal': 'if(sealtag > 0.0, rL*mCO2*poro*invol*satw + rG*satg*poro*invol)',
                             'mTotal': 'rL*mCO2*poro*vol*satw + rG*poro*vol*satg'}
 
 
@@ -190,6 +191,7 @@ class Data(metaclass=ABCMeta):
                     if self.seal_facies_tag == block_tag:
                         seal_tag[start:(start + nt), 0] = 1
                     it.GoToNextItem()
+                    start += int(nt)
 
                 nc = 0
                 j = 0  # for field loop
@@ -229,7 +231,10 @@ class Data(metaclass=ABCMeta):
                             fielddict[self.name_indirection[ifields]] = f[:, j]
                     j = j + nc
 
-            fielddict['sealtag'] = seal_tag[:, 0]
+                if 'sealtag' in fielddict.keys():
+                    fielddict['sealtag'] += seal_tag[:, 0]
+                else:
+                    fielddict['sealtag'] = seal_tag[:, 0]
 
         elif self._get_filename_(pvdfile, time).split('.')[-1] == 'vtu' or  self._get_filename_(pvdfile, time).split('.')[-1] == 'pvtu':
 
@@ -295,7 +300,7 @@ class Data(metaclass=ABCMeta):
                     if ifields in self.name_indirection:
                         fielddict[self.name_indirection[ifields]] = f
 
-            fielddict['sealtag'] = (fielddict['poro']==0.1)
+            # fielddict['sealtag'] = (fielddict['poro']==0.1)
 
         return pts, fielddict
 
