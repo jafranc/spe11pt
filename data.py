@@ -52,9 +52,10 @@ class Data(metaclass=ABCMeta):
                                      'phaseMobility_0': 'krg',
                                      'phaseMobility_1': 'krw'}
 
-            self.formula = {'mImmobile': 'if(krg<8000, rG*satg*poro*vol)',
-                            'mMobile': 'if(krg>8000,rG*satg*poro*vol)',
-                            'mDissolved': 'rL*mCO2*poro*vol*satw',
+            self.formula = {'mImmobile': 'if(krg<8000, rG*satg*poro*invol)',
+                            'mMobile': 'if(krg>8000,rG*satg*poro*invol)',
+                            'mTrapped': 'if(satg>0.1, rG*poro*invol)',
+                            'mDissolved': 'rL*mCO2*poro*invol*satw',
                             'mSeal': 'if(sealtag > 0.0, rL*mCO2*poro*vol*satw + rG*satg*poro*vol)',
                             'mTotal': 'if(vol>5e4, rL*mCO2*poro*vol*satw + rG*poro*vol*satg)'}
 
@@ -78,6 +79,7 @@ class Data(metaclass=ABCMeta):
                             'mTotal': 'rL*mCO2*poro*vol*satw + rG*poro*vol*satg'}
 
 
+        self.sirr_mask = { 'reservoir1': 0.1, 'reservoir2': 0.1,'reservoir3': 0.1,'reservoir4': 0.1,'reservoir5': 0.1,'reservoir6': 0.1,'reservoir7': 0.}
         if version[0] in ['b', 'c']:
             # as described
             self.name_indirection['temperature'] = 'temp'
@@ -175,9 +177,10 @@ class Data(metaclass=ABCMeta):
             # form data container
             f = np.zeros(shape=(nv, ncnf), dtype='float')
             seal_tag = np.zeros(shape=(nv, 1), dtype='float')
+            sirr = np.zeros(shape=(nv, 1), dtype='float')
             pts = np.zeros(shape=(nv, 3), dtype='float')
 
-            # get seal flagged
+            # get seal flagged and others
             mesh = reader.GetOutput().GetBlock(0).GetBlock(0).GetBlock(0)
             for i in range(0, mesh.GetNumberOfBlocks()):
                 start = 0
@@ -190,6 +193,7 @@ class Data(metaclass=ABCMeta):
                     nt = field.GetNumberOfValues()
                     if self.seal_facies_tag == block_tag:
                         seal_tag[start:(start + nt), 0] = 1
+                    sirr[start:(start + nt), 0] = self.sirr_mask[block_tag]
                     it.GoToNextItem()
                     start += int(nt)
 
@@ -233,8 +237,10 @@ class Data(metaclass=ABCMeta):
 
                 if 'sealtag' in fielddict.keys():
                     fielddict['sealtag'] += seal_tag[:, 0]
+                    fielddict['sirr'] += np.minimum(sirr[:, 0],fielddict['satg'])
                 else:
                     fielddict['sealtag'] = seal_tag[:, 0]
+                    fielddict['sirr'] = np.minimum(sirr[:, 0],fielddict['satg'])
 
         elif self._get_filename_(pvdfile, time).split('.')[-1] == 'vtu' or  self._get_filename_(pvdfile, time).split('.')[-1] == 'pvtu':
 

@@ -57,6 +57,9 @@ class Sparse_Data(Data):
             self.boxes = {'Whole': [(xm,ym,zm), (xM, yM, zM)]}
             self.PO1 = [1.5/2.8*Lx, -0.7/1.2*Lz]
             self.PO2 = [1.7/2.8*Lx, -0.1/1.2*Lz]
+            if self.version == 'c' and bbox:
+               self.PO1 = [self.PO1[0], 2500, 655]
+               self.PO2 = [self.PO2[0], 2500, 1255]
             offx, offz = (0., 0.)
             # origin
             Ox, Oy, Oz = self.boxes['Whole'][0]
@@ -102,6 +105,7 @@ class Sparse_Data(Data):
             # self.schedule = np.arange(1000* Conversion.SEC2YEAR, 2000*Conversion.SEC2YEAR, 5* Conversion.SEC2YEAR)
         elif self.version == 'c':
             self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 10 * Conversion.SEC2TENTHOFYEAR)
+            self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 250 * Conversion.SEC2TENTHOFYEAR)
 
             # self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 1000 * Conversion.SEC2YEAR / 200)
             # self.schedule = np.arange(0., 615*Conversion.SEC2YEAR, 5*Conversion.SEC2YEAR)
@@ -123,6 +127,7 @@ class Sparse_Data(Data):
 
                 self.PO1 = [self.PO1[0] * 3000, 2500, (self.PO1[1] + 1.2) * 1000]
                 self.PO2 = [self.PO2[0] * 3000, 2500, (self.PO2[1] + 1.2) * 1000]
+
 
     def process(self, directory, ifile, use_smry = False):
 
@@ -180,7 +185,7 @@ class Sparse_Data(Data):
         pts_from_vtk, fields = self._process_time_(ifile, time, olist=olist_)
 
         # some lines for MC magic number
-        if self.version[0] == 'a' or self.version[0] == 'c':
+        if self.version[0] == 'a':
             fields['mCO2Max'] = ff(fields['pres'], 293) * fields['rL']
         else:
             # convert it to kgCO2/m3Brine
@@ -216,7 +221,8 @@ class Sparse_Data(Data):
                         self._integrate_2_(pts_from_vtk, fields['mMobile'], box),
                         self._integrate_2_(pts_from_vtk, fields['mImmobile'], box),
                         self._integrate_2_(pts_from_vtk, fields['mDissolved'], box),
-                        self._integrate_2_(pts_from_vtk, fields['mSeal'], box)
+                        self._integrate_2_(pts_from_vtk, fields['mSeal'], box),
+                        self._integrate_2_(pts_from_vtk, fields['mTrapped'], box)
                     ])
             # #deal box C
             line.append(
@@ -224,7 +230,7 @@ class Sparse_Data(Data):
             # #deal sealTot
             line.append(
                 self._integrate_2_(pts_from_vtk, fields['mSeal'], self.boxes['Whole']))
-            if self.version is 'b':
+            if self.version[0] == "b":
                 line.append(self._integrate_3_(pts_from_vtk, fields['mTotal'], self.boxes['Whole']))
         else:
             for box_name, box in self.boxes.items():
@@ -233,7 +239,8 @@ class Sparse_Data(Data):
                         self._integrate_3_(pts_from_vtk, fields['mMobile'], box),
                         self._integrate_3_(pts_from_vtk, fields['mImmobile'], box),
                         self._integrate_3_(pts_from_vtk, fields['mDissolved'], box),
-                        self._integrate_3_(pts_from_vtk, fields['mSeal'], box)
+                        self._integrate_3_(pts_from_vtk, fields['mSeal'], box),
+                        self._integrate_3_(pts_from_vtk, fields['mTrapped'], box)
                     ])
                 # #deal box C
             line.append(
@@ -242,9 +249,9 @@ class Sparse_Data(Data):
             line.append(self._integrate_3_(pts_from_vtk, fields['mSeal'], self.boxes['Whole']))
             line.append(self._integrate_3_(pts_from_vtk, fields['mTotal'], self.boxes['Whole']))
 
-        cols= ['t[s]', 'p1[Pa]', 'p2[Pa]', 'mobA[kg]', 'immA[kg]', 'dissA[kg]', 'sealA[kg]',
-                       'mobB[kg]', 'immB[kg]', 'dissB[kg]', 'sealB[kg]', 'M_C[m]', 'sealTot[kg]']
-        if self.version in ['b','c']:
+        cols= ['t[s]', 'p1[Pa]', 'p2[Pa]', 'mobA[kg]', 'immA[kg]', 'dissA[kg]', 'sealA[kg]', 'trapA[kg]',
+                       'mobB[kg]', 'immB[kg]', 'dissB[kg]', 'sealB[kg]', 'trapB[kg]', 'M_C[m]', 'sealTot[kg]']
+        if self.version[0] in ['b','c']:
             cols.append('boundsMass[kg]')
 
         return pd.DataFrame(data=[line], columns=cols)
@@ -293,12 +300,16 @@ class Sparse_Data(Data):
         fig, axs = plt.subplots(2, 2)
         (time_name, time_unit), (mass_name, mass_unit), (pressure_name, pressure_unit) = self.converters
         # pressures
+        axs[0][0].set_xscale('log')
+        axs[0][0].set_xlim([1,1000])
         axs[0][0].plot(df['t[s]'].to_numpy() / time_unit, df['p1[Pa]'].to_numpy() / pressure_unit,
                        label=f'pressure 1 [{pressure_name}]')
         axs[0][0].plot(df['t[s]'].to_numpy() / time_unit, df['p2[Pa]'].to_numpy() / pressure_unit,
                        label=f'pressure 2 [{pressure_name}]')
         axs[0][0].legend()
         # box A
+        axs[0][1].set_xscale('log')
+        axs[0][1].set_xlim([1,1000])
         axs[0][1].plot(df['t[s]'].to_numpy() / time_unit, df['mobA[kg]'].to_numpy() / mass_unit,
                        label=f'mobile CO2 [{mass_name}]')
         axs[0][1].plot(df['t[s]'].to_numpy() / time_unit, df['immA[kg]'].to_numpy() / mass_unit,
@@ -307,9 +318,13 @@ class Sparse_Data(Data):
                        label=f'dissolved CO2 [{mass_name}]')
         axs[0][1].plot(df['t[s]'].to_numpy() / time_unit, df['sealA[kg]'].to_numpy() / mass_unit,
                        label=f'seal CO2 [{mass_name}]')
+        axs[0][1].plot(df['t[s]'].to_numpy() / time_unit, df['trapA[kg]'].to_numpy() / mass_unit,
+                       label=f'trapped CO2 [{mass_name}]')
         axs[0][1].legend()
         axs[0][1].set_title('boxA')
         # box B
+        axs[1][0].set_xscale('log')
+        axs[1][0].set_xlim([1,1000])
         axs[1][0].plot(df['t[s]'].to_numpy() / time_unit, df['mobB[kg]'].to_numpy() / mass_unit,
                        label=f'mobile CO2 [{mass_name}]')
         axs[1][0].plot(df['t[s]'].to_numpy() / time_unit, df['immB[kg]'].to_numpy() / mass_unit,
@@ -318,9 +333,13 @@ class Sparse_Data(Data):
                        label=f'dissolved CO2 [{mass_name}]')
         axs[1][0].plot(df['t[s]'].to_numpy() / time_unit, df['sealB[kg]'].to_numpy() / mass_unit,
                        label=f'seal CO2 [{mass_name}]')
+        axs[1][0].plot(df['t[s]'].to_numpy() / time_unit, df['trapB[kg]'].to_numpy() / mass_unit,
+                       label=f'trapped CO2 [{mass_name}]')
         axs[1][0].legend()
         axs[1][0].set_title('boxB')
         # boxC
+        axs[1][1].set_xscale('log')
+        axs[1][1].set_xlim([1,1000])
         axs[1][1].plot(df['t[s]'].to_numpy() / time_unit, df['M_C[m]'].to_numpy(), label='M_C[m]')
         axs[1][1].legend()
         axs[1][1].set_title('boxC')
