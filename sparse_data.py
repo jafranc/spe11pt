@@ -199,9 +199,9 @@ class Sparse_Data(Data):
         self.formula['M_C'] = 'mCO2/mCO2Max'
 
         #discarding buffers
-        ii = np.where(fields['vol']>5e4)
-        fields['invol'] = copy.deepcopy(fields['vol'])
-        fields['invol'][ii] = 0
+        # ii = np.where(fields['vol']>5e4)
+        # fields['invol'] = copy.deepcopy(fields['vol'])
+        # fields['invol'][ii] = 0
 
         for key, form in self.formula.items():
             fields[key] = self.process_keys(form, fields)

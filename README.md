@@ -11,14 +11,14 @@ helper plots (representation of the data).
 
 ````python
 
-   python3 main.py -o /path/to/out_spe11a --spe a --dense --pvd /path/to/vtkOutput.pvd --solute /path/to/solubility_table.csv --units h g Pa
+   python3 main.py -o /path/to/out_spe11a --sim GEOS --spe a --dense --pvd /path/to/vtkOutput.pvd --solute /path/to/solubility_table.csv --units h g Pa
 
 ````
 
 
 ````python
 
-   python3 main.py -o /path/to/out_spe11b --spe b --sparse --on-pvd --pvd /path/to/vtkOutput.pvd  --units y t bar --solute /path/to/solubility_table.csv --units y kg bar
+   python3 main.py -o /path/to/out_spe11b --sim GEOS --spe b --sparse --on-pvd --pvd /path/to/vtkOutput.pvd  --units y t bar --solute /path/to/solubility_table.csv --units y kg bar
 
 ````
 

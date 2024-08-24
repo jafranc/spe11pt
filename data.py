@@ -54,7 +54,7 @@ class Data(metaclass=ABCMeta):
 
             self.formula = {'mImmobile': 'if(krg<8000, rG*satg*poro*vol)',
                             'mMobile': 'if(krg>8000,rG*satg*poro*vol)',
-			    'mTrapped': 'if(satg>0.1, rG*poro*invol)',
+                            'mTrapped': 'if(satg>0.1, rG*poro*vol)',
                             'mDissolved': 'rL*mCO2*poro*vol*satw',
                             'mSeal': 'if(sealtag > 0.0, rL*mCO2*poro*vol*satw + rG*satg*poro*vol)',
                             'mTotal': 'if(vol>5e4, rL*mCO2*poro*vol*satw + rG*poro*vol*satg)'}
