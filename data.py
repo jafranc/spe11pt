@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 import numpy as np
 import os
@@ -52,10 +52,10 @@ class Data(metaclass=ABCMeta):
                                      'phaseMobility_0': 'krg',
                                      'phaseMobility_1': 'krw'}
 
-            self.formula = {'mImmobile': 'if(krg<8000, rG*satg*poro*invol)',
-                            'mMobile': 'if(krg>8000,rG*satg*poro*invol)',
-                            'mTrapped': 'if(satg>0.1, rG*poro*invol)',
-                            'mDissolved': 'rL*mCO2*poro*invol*satw',
+            self.formula = {'mImmobile': 'if(krg<8000, rG*satg*poro*vol)',
+                            'mMobile': 'if(krg>8000,rG*satg*poro*vol)',
+                            'mTrapped': 'if(satg>0.1, rG*poro*vol)',
+                            'mDissolved': 'rL*mCO2*poro*vol*satw',
                             'mSeal': 'if(sealtag > 0.0, rL*mCO2*poro*vol*satw + rG*satg*poro*vol)',
                             'mTotal': 'if(vol>5e4, rL*mCO2*poro*vol*satw + rG*poro*vol*satg)'}
 
@@ -79,7 +79,6 @@ class Data(metaclass=ABCMeta):
                             'mTotal': 'rL*mCO2*poro*vol*satw + rG*poro*vol*satg'}
 
 
-        self.sirr_mask = { 'reservoir1': 0.1, 'reservoir2': 0.1,'reservoir3': 0.1,'reservoir4': 0.1,'reservoir5': 0.1,'reservoir6': 0.1,'reservoir7': 0.}
         if version[0] in ['b', 'c']:
             # as described
             self.name_indirection['temperature'] = 'temp'
@@ -89,12 +88,15 @@ class Data(metaclass=ABCMeta):
             self._read_pvd_(pvdfile)
         return os.path.dirname(pvdfile) + '/' + self.data_sets[time]
 
-    def _read_pvd_(self, ifile):
+    def _read_pvd_(self, ifile):#should be optional
         import xml.etree.ElementTree as ET
         tree = ET.parse(ifile)
         root = tree.getroot()
+        schedule = list()
         for ds in root.find('Collection').findall('DataSet'):
             self.data_sets[float(ds.attrib['timestep'])] = ds.attrib['file']
+            schedule.append(float(ds.attrib['timestep']))
+        return schedule
 
     def _get_interpolate_(self, points_from_vtk, fields: dict, nskip=1):
         """ getting dict of proper interpolation for fields """
@@ -124,9 +126,9 @@ class Data(metaclass=ABCMeta):
 
     def bounding_box(self,pvdfile):
         import vtk
-        if self._get_filename_(pvdfile, 0).split('.')[-1] == 'vtm':
+        if self._get_filename_(pvdfile, self.schedule[0]).split('.')[-1] == 'vtm':
             reader = vtk.vtkXMLMultiBlockDataReader()
-            reader.SetFileName(self._get_filename_(pvdfile, 0))
+            reader.SetFileName(self._get_filename_(pvdfile, self.schedule[0]))
             reader.Update()
 
             it = reader.GetOutput().NewIterator()
@@ -177,10 +179,9 @@ class Data(metaclass=ABCMeta):
             # form data container
             f = np.zeros(shape=(nv, ncnf), dtype='float')
             seal_tag = np.zeros(shape=(nv, 1), dtype='float')
-            sirr = np.zeros(shape=(nv, 1), dtype='float')
             pts = np.zeros(shape=(nv, 3), dtype='float')
 
-            # get seal flagged and others
+            # get seal flagged
             mesh = reader.GetOutput().GetBlock(0).GetBlock(0).GetBlock(0)
             for i in range(0, mesh.GetNumberOfBlocks()):
                 start = 0
@@ -193,7 +194,6 @@ class Data(metaclass=ABCMeta):
                     nt = field.GetNumberOfValues()
                     if self.seal_facies_tag == block_tag:
                         seal_tag[start:(start + nt), 0] = 1
-                    sirr[start:(start + nt), 0] = self.sirr_mask[block_tag]
                     it.GoToNextItem()
                     start += int(nt)
 
@@ -237,10 +237,8 @@ class Data(metaclass=ABCMeta):
 
                 if 'sealtag' in fielddict.keys():
                     fielddict['sealtag'] += seal_tag[:, 0]
-                    fielddict['sirr'] += np.minimum(sirr[:, 0],fielddict['satg'])
                 else:
                     fielddict['sealtag'] = seal_tag[:, 0]
-                    fielddict['sirr'] = np.minimum(sirr[:, 0],fielddict['satg'])
 
         elif self._get_filename_(pvdfile, time).split('.')[-1] == 'vtu' or  self._get_filename_(pvdfile, time).split('.')[-1] == 'pvtu':
 
