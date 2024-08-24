@@ -101,11 +101,13 @@ class Sparse_Data(Data):
                 self.PO2 = [self.PO2[0] * 3000, self.PO2[1] * 1000]
             self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 10 * Conversion.SEC2TENTHOFYEAR)
             self.schedule = np.arange(0., 885 * Conversion.SEC2YEAR, 50 * Conversion.SEC2YEAR)
+		#interactive
+            self.schedule = np.arange(0*Conversion.SEC2YEAR, 1000 * Conversion.SEC2YEAR, Conversion.SEC2TENTHOFYEAR)
+            print(f'schedule : {self.schedule}')
             ## tmp for OPM
             # self.schedule = np.arange(1000* Conversion.SEC2YEAR, 2000*Conversion.SEC2YEAR, 5* Conversion.SEC2YEAR)
         elif self.version == 'c':
-            self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 10 * Conversion.SEC2TENTHOFYEAR)
-            self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 250 * Conversion.SEC2TENTHOFYEAR)
+            self.schedule = np.arange(19. * Conversion.SEC2YEAR, 1000 * Conversion.SEC2YEAR, 10 * Conversion.SEC2TENTHOFYEAR)
 
             # self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 1000 * Conversion.SEC2YEAR / 200)
             # self.schedule = np.arange(0., 615*Conversion.SEC2YEAR, 5*Conversion.SEC2YEAR)
@@ -127,7 +129,6 @@ class Sparse_Data(Data):
 
                 self.PO1 = [self.PO1[0] * 3000, 2500, (self.PO1[1] + 1.2) * 1000]
                 self.PO2 = [self.PO2[0] * 3000, 2500, (self.PO2[1] + 1.2) * 1000]
-
 
     def process(self, directory, ifile, use_smry = False):
 
@@ -230,7 +231,7 @@ class Sparse_Data(Data):
             # #deal sealTot
             line.append(
                 self._integrate_2_(pts_from_vtk, fields['mSeal'], self.boxes['Whole']))
-            if self.version[0] == "b":
+            if self.version[0] == 'b':
                 line.append(self._integrate_3_(pts_from_vtk, fields['mTotal'], self.boxes['Whole']))
         else:
             for box_name, box in self.boxes.items():
@@ -249,9 +250,9 @@ class Sparse_Data(Data):
             line.append(self._integrate_3_(pts_from_vtk, fields['mSeal'], self.boxes['Whole']))
             line.append(self._integrate_3_(pts_from_vtk, fields['mTotal'], self.boxes['Whole']))
 
-        cols= ['t[s]', 'p1[Pa]', 'p2[Pa]', 'mobA[kg]', 'immA[kg]', 'dissA[kg]', 'sealA[kg]', 'trapA[kg]',
+        cols= ['t[s]', 'p1[Pa]', 'p2[Pa]', 'mobA[kg]', 'immA[kg]', 'dissA[kg]', 'sealA[kg]','trapA[kg]',
                        'mobB[kg]', 'immB[kg]', 'dissB[kg]', 'sealB[kg]', 'trapB[kg]', 'M_C[m]', 'sealTot[kg]']
-        if self.version[0] in ['b','c']:
+        if self.version in ['b','c']:
             cols.append('boundsMass[kg]')
 
         return pd.DataFrame(data=[line], columns=cols)
@@ -271,25 +272,32 @@ class Sparse_Data(Data):
                  len(item) > 0])
 
         # for time in tqdm(self.schedule):
-        # import multiprocessing as mp
-        # from functools import partial
-        pdlist = []
-        # pool = mp.Pool()
-        # pdlist.append(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule))
-        # pool.close()
-        # pool.join()
-        if use_smry:
-            df = self._from_opm_rst_smry(ifile)
-        else:
-            for time in self.schedule:
-                pdlist.append(self._thread_this_(ifile,olist_,ff,time))
-            df = pd.concat(pdlist, ignore_index=True)
+        import multiprocessing as mp
+        from functools import partial
+        for iblock in range(0+(off:=0),len(self.schedule)+off,10):
+            pdlist = list()
+            pool = mp.Pool(processes=10)
+            #pdlist.append(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule[iblock:iblock+9]))
+            df = pd.concat(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule[iblock:iblock+9]), ignore_index=True)
+            pool.close()
+            pool.join()
+            #df = pd.concat(pdlist, ignore_index=True)
+            df.sort_values(by=['t[s]'])
+            print(f'writing at /{directory}/spe11{self.version}_{iblock}_time_series.csv')
+            df.to_csv('/' + directory + '/spe11' + self.version + f'_{iblock}_time_series.csv')
+        #if use_smry:
+        #    df = self._from_opm_rst_smry(ifile)
+        #else:
+        #    for time in self.schedule:
+        #        pdlist.append(self._thread_this_(ifile,olist_,ff,time))
+        #    df = pd.concat(pdlist, ignore_index=True)
 
 
 
         #write off panda dataframe ordered by time
-        df.sort_values(by=['t[s]'])
-        df.to_csv('./' + directory + '/spe11' + self.version + '_time_series.csv')
+        #df = pd.concat(pdlist, ignore_index=True)
+        #df.sort_values(by=['t[s]'])
+        #df.to_csv('./' + directory + '/spe11' + self.version + '_time_series.csv')
 
 
 
@@ -319,7 +327,7 @@ class Sparse_Data(Data):
         axs[0][1].plot(df['t[s]'].to_numpy() / time_unit, df['sealA[kg]'].to_numpy() / mass_unit,
                        label=f'seal CO2 [{mass_name}]')
         axs[0][1].plot(df['t[s]'].to_numpy() / time_unit, df['trapA[kg]'].to_numpy() / mass_unit,
-                       label=f'trapped CO2 [{mass_name}]')
+                       label=f'trap CO2 [{mass_name}]')
         axs[0][1].legend()
         axs[0][1].set_title('boxA')
         # box B
@@ -333,8 +341,8 @@ class Sparse_Data(Data):
                        label=f'dissolved CO2 [{mass_name}]')
         axs[1][0].plot(df['t[s]'].to_numpy() / time_unit, df['sealB[kg]'].to_numpy() / mass_unit,
                        label=f'seal CO2 [{mass_name}]')
-        axs[1][0].plot(df['t[s]'].to_numpy() / time_unit, df['trapB[kg]'].to_numpy() / mass_unit,
-                       label=f'trapped CO2 [{mass_name}]')
+        axs[0][1].plot(df['t[s]'].to_numpy() / time_unit, df['trapB[kg]'].to_numpy() / mass_unit,
+                       label=f'trap CO2 [{mass_name}]')
         axs[1][0].legend()
         axs[1][0].set_title('boxB')
         # boxC
