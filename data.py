@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 import numpy as np
 import os
@@ -88,12 +88,15 @@ class Data(metaclass=ABCMeta):
             self._read_pvd_(pvdfile)
         return os.path.dirname(pvdfile) + '/' + self.data_sets[time]
 
-    def _read_pvd_(self, ifile):
+    def _read_pvd_(self, ifile):#should be optional
         import xml.etree.ElementTree as ET
         tree = ET.parse(ifile)
         root = tree.getroot()
+        schedule = list()
         for ds in root.find('Collection').findall('DataSet'):
             self.data_sets[float(ds.attrib['timestep'])] = ds.attrib['file']
+            schedule.append(float(ds.attrib['timestep']))
+        return schedule
 
     def _get_interpolate_(self, points_from_vtk, fields: dict, nskip=1):
         """ getting dict of proper interpolation for fields """

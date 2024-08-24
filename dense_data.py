@@ -7,9 +7,11 @@ from data import Data, Conversion
 class Dense_Data(Data):
     """ Class for handling from vtm time series to dense data SPE11-CSP """
 
-    def __init__(self, simulator_name ,version, solubility_file):
+    def __init__(self, simulator_name ,version, solubility_file, on_pvd = False):
 
         super().__init__(simulator_name, version)
+        self.on_pvd = on_pvd
+
         self.path_to_solubility = solubility_file
         self.phydims = (2.8, 1., 1.2)
         self.dims = (280, 1, 120)
@@ -68,6 +70,10 @@ class Dense_Data(Data):
     def process(self, directory, ifile):
 
         super().process(directory, ifile)
+        if self.on_pvd:
+            self.schedule = super()._read_pvd_(ifile)
+            print(f'Overwriting schedule with {self.schedule}')
+
         ff = self._process_solubility_(self.path_to_solubility)
 
         # preprocess input list from desired output

@@ -10,8 +10,9 @@ from data import Data, Conversion
 class Sparse_Data(Data):
     """ Class for handling from vtm time series to sparse data SPE11-CSP"""
 
-    def __init__(self, simulator_name, version, solubility_file, units):
+    def __init__(self, simulator_name, version, solubility_file, units, on_pvd = False):
         super().__init__(simulator_name, version)
+        self.on_pvd = on_pvd
 
         self.converters = [('sec', 1), ('kg', 1), ('Pa', 1)]
 
@@ -130,8 +131,12 @@ class Sparse_Data(Data):
                 self.PO1 = [self.PO1[0] * 3000, 2500, (self.PO1[1] + 1.2) * 1000]
                 self.PO2 = [self.PO2[0] * 3000, 2500, (self.PO2[1] + 1.2) * 1000]
 
-    def process(self, directory, ifile, use_smry = False):
 
+
+    def process(self, directory, ifile, use_smry = False):
+        if self.on_pvd:
+            self.schedule = super()._read_pvd_(ifile)
+            print(f'Overwriting schedule with {self.schedule}')
         bbox = super().bounding_box(ifile)
         self.set_boxes(bbox)
         super().process(directory, ifile)
@@ -223,7 +228,8 @@ class Sparse_Data(Data):
                         self._integrate_2_(pts_from_vtk, fields['mImmobile'], box),
                         self._integrate_2_(pts_from_vtk, fields['mDissolved'], box),
                         self._integrate_2_(pts_from_vtk, fields['mSeal'], box),
-                        self._integrate_2_(pts_from_vtk, fields['mTrapped'], box)
+                        #sirr_gas is 0.1 every where
+                        self._integrate_2_(pts_from_vtk, 0.1*fields['mTrapped'], box)
                     ])
             # #deal box C
             line.append(
@@ -241,7 +247,8 @@ class Sparse_Data(Data):
                         self._integrate_3_(pts_from_vtk, fields['mImmobile'], box),
                         self._integrate_3_(pts_from_vtk, fields['mDissolved'], box),
                         self._integrate_3_(pts_from_vtk, fields['mSeal'], box),
-                        self._integrate_3_(pts_from_vtk, fields['mTrapped'], box)
+                        #sirr_gas is 0.1 every where
+                        self._integrate_3_(pts_from_vtk, 0.1*fields['mTrapped'], box)
                     ])
                 # #deal box C
             line.append(
@@ -275,13 +282,10 @@ class Sparse_Data(Data):
         import multiprocessing as mp
         from functools import partial
         for iblock in range(0+(off:=0),len(self.schedule)+off,10):
-            pdlist = list()
             pool = mp.Pool(processes=10)
-            #pdlist.append(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule[iblock:iblock+9]))
             df = pd.concat(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule[iblock:iblock+9]), ignore_index=True)
             pool.close()
             pool.join()
-            #df = pd.concat(pdlist, ignore_index=True)
             df.sort_values(by=['t[s]'])
             print(f'writing at /{directory}/spe11{self.version}_{iblock}_time_series.csv')
             df.to_csv('/' + directory + '/spe11' + self.version + f'_{iblock}_time_series.csv')

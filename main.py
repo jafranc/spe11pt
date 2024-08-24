@@ -16,6 +16,9 @@ if __name__ == "__main__":
     parser.add_argument("--slurm",
                         help="path to the log file",
                         nargs=1, required=False)
+    parser.add_argument("--on-pvd",
+                        help="path to the log file",
+                        action='store_true', required=False)
     parser.add_argument("--solute",
                         help="path to the solubility csv file",
                         nargs=1, required=False)
@@ -51,10 +54,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.dense and args.pvd and args.solute:
-        dense = Dense_Data(args.sim[0], args.spe, args.solute[0])
+        dense = Dense_Data(args.sim[0], args.spe, args.solute[0], on_pvd=args.on_pvd)
         dense.process(directory=args.o[0], ifile=args.pvd[0])
     elif args.sparse and args.pvd and args.solute and args.units:
-        sparse = Sparse_Data(args.sim[0], args.spe, solubility_file=args.solute[0], units=args.units)
+        sparse = Sparse_Data(args.sim[0], args.spe, solubility_file=args.solute[0], units=args.units, on_pvd=args.on_pvd)
         sparse.process(directory=args.o[0], ifile=args.pvd[0], use_smry=args.smry)
     elif args.sparsesolver and args.slurm and args.units:
         sparse = Solver_Sparse(args.sim[0], args.spe, units=args.units)
