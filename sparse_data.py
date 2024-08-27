@@ -134,11 +134,11 @@ class Sparse_Data(Data):
 
 
     def process(self, directory, ifile, use_smry = False):
+        bbox = super().bounding_box(ifile)
+        self.set_boxes(bbox)
         if self.on_pvd:
             self.schedule = super()._read_pvd_(ifile)
             print(f'Overwriting schedule with {self.schedule}')
-        bbox = super().bounding_box(ifile)
-        self.set_boxes(bbox)
         super().process(directory, ifile)
         self._write_(directory, ifile, use_smry)
         self._plot_(directory)
