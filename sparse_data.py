@@ -281,9 +281,9 @@ class Sparse_Data(Data):
         # for time in tqdm(self.schedule):
         import multiprocessing as mp
         from functools import partial
-        for iblock in range(0+(off:=0),len(self.schedule)+off,10):
+        for iblock in range(0,len(self.schedule),10):
             pool = mp.Pool(processes=10)
-            df = pd.concat(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule[iblock:iblock+9]), ignore_index=True)
+            df = pd.concat(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule[iblock:iblock+10]), ignore_index=True)
             pool.close()
             pool.join()
             df.sort_values(by=['t[s]'])
