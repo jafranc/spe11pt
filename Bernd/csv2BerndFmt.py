@@ -17,10 +17,6 @@ _model_name = ''
 _2d_model_name = ''
 
 
-class Conversion:
-    K2C = 273.15
-
-
 class PhysicalIndexMapper:
     def __init__(self) -> None:
         gmsh.initialize()
@@ -235,15 +231,14 @@ args = parser.parse_args()
 
 # directory and root
 if (args.path and args.root):
-    schedule = range(0, 39, 1)  # directly in years
+    schedule = range(0,26)  # directly in years
     pmapper = PhysicalIndexMapper()
     for index in schedule:
         df = pd.read_csv(f'{args.path[0]}/{args.root[0]}_{index}.csv',
                          usecols=['elementCenter:0', 'elementCenter:1', 'elementCenter:2'])
         pts_from_vtk = df.to_numpy()
-        field_names = ["pressure", "temperature", "phaseVolumeFraction:0", "fluid_phaseCompFraction:2"]
-        offset_ = {"pressure": 0, "temperature": -Conversion.K2C, "phaseVolumeFraction:0": 0,
-                   "fluid_phaseCompFraction:2": 0}
+        field_names = ["pressure", "phaseVolumeFraction:0", "fluid_phaseCompFraction:2","fluid_phaseCompFraction:1","fluid_phaseMassDensity:0","fluid_phaseMassDensity:1","compAmount:0", "temperatureC"]
+        offset_ = {"pressure":0, "phaseVolumeFraction:0":0, "fluid_phaseCompFraction:2":0,"fluid_phaseCompFraction:1":0,"fluid_phaseMassDensity:0":0,"fluid_phaseMassDensity:1":0,"compAmount:0":0, "temperatureC":0}
         # for name in field_names:
         f = read(args.path[0], f'{args.root[0]}_{index}.csv', pts_from_vtk, field_names)
-        write(args.path[0], f'{args.root[0]}_{index}_formatted.csv', field_names, f, pmapper, offset_)
+        write('/media/jfranc/Seagate Portable Drive/data-spe11/c/', f'{args.root[0]}_{index}_formatted.csv', field_names, f, pmapper, offset_)
