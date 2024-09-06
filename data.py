@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 
 import numpy as np
 import os
@@ -54,10 +54,10 @@ class Data(metaclass=ABCMeta):
 
             self.formula = {'mImmobile': 'if(krg<8000, rG*satg*poro*vol)',
                             'mMobile': 'if(krg>8000,rG*satg*poro*vol)',
-                            'mTrapped': 'if(satg>0.1, rG*poro*vol)',
+			    'mTrapped': 'if(satg>0.1, rG*poro*vol)',
                             'mDissolved': 'rL*mCO2*poro*vol*satw',
                             'mSeal': 'if(sealtag > 0.0, rL*mCO2*poro*vol*satw + rG*satg*poro*vol)',
-                            'mTotal': 'if(vol>5e4, rL*mCO2*poro*vol*satw + rG*poro*vol*satg)'}
+                            'mTotal': 'if(vol<5e4, rL*mCO2*poro*vol*satw + rG*poro*vol*satg)'}
 
         elif simulator_name == "OPM":
             self.name_indirection = { 'pressure_water': 'pres',
@@ -88,15 +88,13 @@ class Data(metaclass=ABCMeta):
             self._read_pvd_(pvdfile)
         return os.path.dirname(pvdfile) + '/' + self.data_sets[time]
 
-    def _read_pvd_(self, ifile):#should be optional
+    def _read_pvd_(self, ifile):
         import xml.etree.ElementTree as ET
         tree = ET.parse(ifile)
         root = tree.getroot()
-        schedule = list()
         for ds in root.find('Collection').findall('DataSet'):
             self.data_sets[float(ds.attrib['timestep'])] = ds.attrib['file']
-            schedule.append(float(ds.attrib['timestep']))
-        return schedule
+        return list(self.data_sets.keys())
 
     def _get_interpolate_(self, points_from_vtk, fields: dict, nskip=1):
         """ getting dict of proper interpolation for fields """

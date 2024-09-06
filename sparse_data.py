@@ -108,7 +108,7 @@ class Sparse_Data(Data):
             ## tmp for OPM
             # self.schedule = np.arange(1000* Conversion.SEC2YEAR, 2000*Conversion.SEC2YEAR, 5* Conversion.SEC2YEAR)
         elif self.version == 'c':
-            self.schedule = np.arange(19. * Conversion.SEC2YEAR, 1000 * Conversion.SEC2YEAR, 10 * Conversion.SEC2TENTHOFYEAR)
+            self.schedule = np.arange(0. * Conversion.SEC2YEAR, 1000 * Conversion.SEC2YEAR, 1 * Conversion.SEC2TENTHOFYEAR)
 
             # self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 1000 * Conversion.SEC2YEAR / 200)
             # self.schedule = np.arange(0., 615*Conversion.SEC2YEAR, 5*Conversion.SEC2YEAR)
@@ -131,9 +131,10 @@ class Sparse_Data(Data):
                 self.PO1 = [self.PO1[0] * 3000, 2500, (self.PO1[1] + 1.2) * 1000]
                 self.PO2 = [self.PO2[0] * 3000, 2500, (self.PO2[1] + 1.2) * 1000]
 
-
-
     def process(self, directory, ifile, use_smry = False):
+        if self.on_pvd:
+            self.schedule = super()._read_pvd_(ifile)
+            print(f'Overwriting schedule with {self.schedule}')
         bbox = super().bounding_box(ifile)
         self.set_boxes(bbox)
         if self.on_pvd:
@@ -199,9 +200,9 @@ class Sparse_Data(Data):
         self.formula['M_C'] = 'mCO2/mCO2Max'
 
         #discarding buffers
-        # ii = np.where(fields['vol']>5e4)
-        # fields['invol'] = copy.deepcopy(fields['vol'])
-        # fields['invol'][ii] = 0
+        ii = np.where(fields['vol']>5e4)
+        fields['invol'] = copy.deepcopy(fields['vol'])
+        fields['invol'][ii] = 0
 
         for key, form in self.formula.items():
             fields[key] = self.process_keys(form, fields)
@@ -228,7 +229,6 @@ class Sparse_Data(Data):
                         self._integrate_2_(pts_from_vtk, fields['mImmobile'], box),
                         self._integrate_2_(pts_from_vtk, fields['mDissolved'], box),
                         self._integrate_2_(pts_from_vtk, fields['mSeal'], box),
-                        #sirr_gas is 0.1 every where
                         self._integrate_2_(pts_from_vtk, 0.1*fields['mTrapped'], box)
                     ])
             # #deal box C
@@ -247,7 +247,6 @@ class Sparse_Data(Data):
                         self._integrate_3_(pts_from_vtk, fields['mImmobile'], box),
                         self._integrate_3_(pts_from_vtk, fields['mDissolved'], box),
                         self._integrate_3_(pts_from_vtk, fields['mSeal'], box),
-                        #sirr_gas is 0.1 every where
                         self._integrate_3_(pts_from_vtk, 0.1*fields['mTrapped'], box)
                     ])
                 # #deal box C
@@ -281,14 +280,20 @@ class Sparse_Data(Data):
         # for time in tqdm(self.schedule):
         import multiprocessing as mp
         from functools import partial
+        # df = self._thread_this_(ifile, olist_, ff, self.schedule[-1])
+        # df.sort_values(by=['t[s]'])
+        # print(f'writing at /{directory}/spe11{self.version}_C_time_series.csv')
+        # df.to_csv('/' + directory + '/spe11' + self.version + '_C_time_series.csv')
         for iblock in range(0,len(self.schedule),10):
+            pdlist = list()
             pool = mp.Pool(processes=10)
             df = pd.concat(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule[iblock:iblock+10]), ignore_index=True)
             pool.close()
             pool.join()
+            #df = pd.concat(pdlist, ignore_index=True)
             df.sort_values(by=['t[s]'])
-            print(f'writing at /{directory}/spe11{self.version}_{iblock}_time_series.csv')
-            df.to_csv('/' + directory + '/spe11' + self.version + f'_{iblock}_time_series.csv')
+            print(f'writing at /{directory}/spe11{self.version}_{iblock+(off:=0)}_time_series.csv')
+            df.to_csv('/' + directory + '/spe11' + self.version + f'_{iblock+(off:=0)}_time_series.csv')
         #if use_smry:
         #    df = self._from_opm_rst_smry(ifile)
         #else:

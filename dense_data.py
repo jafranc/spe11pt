@@ -23,11 +23,11 @@ class Dense_Data(Data):
             self.dims = (840, 1, 120)
             self.offset = [0., 0., -1200.]
             #
-            self.schedule = np.arange(0., 1000 * Conversion.SEC2YEAR, 50 * Conversion.SEC2TENTHOFYEAR)
-            self.schedule = [ item * Conversion.SEC2YEAR for item in [50,200,400,600,885]]
+            self.schedule = np.arange(0., 1001 * Conversion.SEC2YEAR, 50 * Conversion.SEC2TENTHOFYEAR)
+            #self.schedule = [ item * Conversion.SEC2YEAR for item in [50,200,400,600,885]]
 # 2024-08-19
-            self.schedule = list(np.arange(0 * Conversion.SEC2YEAR, 55 * Conversion.SEC2YEAR, 50 * Conversion.SEC2TENTHOFYEAR))
-            self.schedule.extend([1000*Conversion.SEC2YEAR])
+            #self.schedule = list(np.arange(0 * Conversion.SEC2YEAR, 55 * Conversion.SEC2YEAR, 50 * Conversion.SEC2TENTHOFYEAR))
+            #self.schedule.extend([1000*Conversion.SEC2YEAR])
             self.filename_converter, self.filename_marker = (Conversion.SEC2YEAR, 'y')
         elif version[0] == 'c':
             self.phydims = (2.8 * 3000, 5000., 1.2 * 1000)
@@ -51,6 +51,7 @@ class Dense_Data(Data):
 
     def _thread_this_(self, directory, ifile, ff, olist_, itime):
         time = self.schedule[itime]
+        print(f'processing time {time}')
         pts_from_vtk, fields = self._process_time_(ifile, time, olist=olist_)
         # some lines for MC magic number
         if self.version[0] == 'a':  # TODO change it when comes to thermal results
@@ -63,8 +64,10 @@ class Dense_Data(Data):
         for key, form in self.formula.items():
             fields[key] = self.process_keys(form, fields)
 
+        print(f'interpolating for fields')
         fn = self._get_interpolate_(pts_from_vtk, fields)
 
+        print(f'writing time {time}')
         self._write_(time, fn, directory)
 
     def process(self, directory, ifile):
@@ -84,14 +87,15 @@ class Dense_Data(Data):
 
         # from tqdm import tqdm
         import multiprocessing as mp
-        # from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor
         from functools import partial
 
-        pool = mp.Pool()
-        # with ThreadPoolExecutor(max_workers=8) as pool:
-        pool.map(partial(self._thread_this_, directory, ifile, ff, olist_), range(len(self.schedule)))
-        pool.close()
-        pool.join()
+        #pool = mp.Pool()
+        self._read_pvd_(ifile)
+        with ThreadPoolExecutor(max_workers=4) as pool:
+          pool.map(partial(self._thread_this_, directory, ifile, ff, olist_), range(len(self.schedule)))
+        #pool.close()
+        #pool.join()
 
         # # to plot as would be printed
         baseFileName = directory + '/plot'
@@ -109,17 +113,6 @@ class Dense_Data(Data):
                                 'temp': ' temperature[C]'}
 
         # for itime, time in enumerate(self.schedule[::int(len(self.schedule) / 10)][1:]):
-        for itime, time in enumerate(self.schedule):
-            import pandas as pd
-            fname = '/' + directory + '/spatial_map_' + "{time:2}".format(
-                time=time / self.filename_converter) + self.filename_marker + '.csv'
-            data = pd.read_csv(fname)
-            data = data.drop(0) # miss write from numpy
-            fn = lambda key : data[csv_keys_translation[key]]
-            self._plot_((itime, time), fig, fn, self.dims)
-
-        for key, _ in fig.items():
-            fig[key].savefig(f'{baseFileName}_{key}.png', bbox_inches='tight')
 
     def _write_(self, time, fn, directory):
 
