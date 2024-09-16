@@ -23,7 +23,7 @@ class Dense_Data(Data):
             self.dims = (840, 1, 120)
             self.offset = [0., 0., -1200.]
             #
-            self.schedule = np.arange(0., 1001 * Conversion.SEC2YEAR, 50 * Conversion.SEC2TENTHOFYEAR)
+            self.schedule = np.arange(0. * Conversion.SEC2YEAR, 1001 * Conversion.SEC2YEAR, 50 * Conversion.SEC2TENTHOFYEAR)
             #self.schedule = [ item * Conversion.SEC2YEAR for item in [50,200,400,600,885]]
 # 2024-08-19
             #self.schedule = list(np.arange(0 * Conversion.SEC2YEAR, 55 * Conversion.SEC2YEAR, 50 * Conversion.SEC2TENTHOFYEAR))
@@ -62,6 +62,7 @@ class Dense_Data(Data):
         self.formula['M_C'] = 'mCO2/mCO2Max'
 
         for key, form in self.formula.items():
+            print(f'processing fields {key}')
             fields[key] = self.process_keys(form, fields)
 
         print(f'interpolating for fields')
