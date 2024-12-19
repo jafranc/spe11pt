@@ -139,6 +139,9 @@ class Sparse_Data(Data):
             print(f'Overwriting schedule with {self.schedule}')
         bbox = super().bounding_box(ifile)
         self.set_boxes(bbox)
+        if self.on_pvd:
+            self.schedule = super()._read_pvd_(ifile)
+            print(f'Overwriting schedule with {self.schedule}')
         super().process(directory, ifile)
         self._write_(directory, ifile, use_smry)
         self._plot_(directory)
@@ -283,7 +286,7 @@ class Sparse_Data(Data):
         from functools import partial
         for iblock in range(0+(off:=0),len(self.schedule)+off,10):
             pool = mp.Pool(processes=10)
-            df = pd.concat(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule[iblock:iblock+9]), ignore_index=True)
+            df = pd.concat(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule[iblock:iblock+10]), ignore_index=True)
             pool.close()
             pool.join()
             df.sort_values(by=['t[s]'])

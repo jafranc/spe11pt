@@ -214,6 +214,8 @@ def write(directory, ofile, field_names, fn, pmapper : PhysicalIndexMapper, offs
         if pmapper.physical_index((x,y,z)) == PHYSICAL_INDEX_OUTSIDE_OF_DOMAIN:
             output[ii,3:] = np.nan
 
+    #np.savetxt(f'{directory}/{ofile}', output, fmt=file_fmt, delimiter=',', header=file_header)
+    alt = "/media/jfranc/Seagate Portable Drive/data-spe11/c"
     np.savetxt(f'{directory}/{ofile}', output, fmt=file_fmt, delimiter=',', header=file_header)
 
 
@@ -235,7 +237,7 @@ args = parser.parse_args()
 
 # directory and root
 if (args.path and args.root):
-    schedule = range(0, 39, 1)  # directly in years
+    schedule = range(130, 200, 1)  # directly in years
     pmapper = PhysicalIndexMapper()
     for index in schedule:
         df = pd.read_csv(f'{args.path[0]}/{args.root[0]}_{index}.csv',
