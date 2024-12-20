@@ -45,7 +45,7 @@ class Sparse_Data(Data):
     def set_boxes(self,bbox=()):
 
         if not bbox:
-            xm,xM,ym,yM,zm,zM = (0.0,2.8,0.0,.01,-1.2,0.0)
+            xm,xM,ym,yM,zm,zM = (0.0,2.8,0.0,.01,-1.2+1.2,0.0+1.2)
         else:
             xm,xM,ym,yM,zm,zM = bbox
 
@@ -56,8 +56,8 @@ class Sparse_Data(Data):
         # geom in meters
         if self.sim_name == "GEOS":
             self.boxes = {'Whole': [(xm,ym,zm), (xM, yM, zM)]}
-            self.PO1 = [1.5/2.8*Lx, -0.7/1.2*Lz]
-            self.PO2 = [1.7/2.8*Lx, -0.1/1.2*Lz]
+            self.PO1 = [1.5/2.8*Lx, 0.5/1.2*Lz]
+            self.PO2 = [1.7/2.8*Lx, 1.1/1.2*Lz]
             if self.version == 'c' and bbox:
                self.PO1 = [self.PO1[0], 2500, 655]
                self.PO2 = [self.PO2[0], 2500, 1255]
@@ -205,11 +205,11 @@ class Sparse_Data(Data):
         pts_from_vtk, fields = self._process_time_(ifile, time, olist=olist_)
 
         # some lines for MC magic number
-        if self.version[0] == 'a':
-            fields['mCO2Max'] = ff(fields['pres'], 293) 
-        else:
-            # convert it to kgCO2/m3Brine
-            fields['mCO2Max'] = ff(fields['pres'], fields['temp'])
+        # if self.version[0] == 'a':
+        fields['mCO2Max'] = ff(fields['pres'], 293)
+        # else:
+        #     convert it to kgCO2/m3Brine
+            # fields['mCO2Max'] = ff(fields['pres'], fields['temp'])
         self.formula['M_C'] = 'mCO2/mCO2Max'
 
         #discarding buffers
@@ -246,7 +246,7 @@ class Sparse_Data(Data):
                     ])
             # #deal box C
             indexes = [ j*840 + i  for i in range(329,781) for j in range(9,41) ]
-            x, z = np.meshgrid(np.linspace(5, 8405., 840), np.linspace(-1195, 5, 120))
+            x, z = np.meshgrid(np.linspace(5, 8405., 840), np.linspace(-5, 1205, 120))
             line.append(
                 #self._integrate_gradient_2_(fn['M_C'], fn['vol'], self.boxes['C'], (1000, 500)) )
                 #self._integrate_gradient_2_(fn['M_C'], fn['vol'], self.boxes['C'], (452, 32)) )
@@ -300,20 +300,22 @@ class Sparse_Data(Data):
         # for time in tqdm(self.schedule):
         import multiprocessing as mp
         from functools import partial
-        # df = self._thread_this_(ifile, olist_, ff, self.schedule[-1])
-        # df.sort_values(by=['t[s]'])
-        # print(f'writing at /{directory}/spe11{self.version}_C_time_series.csv')
-        # df.to_csv('/' + directory + '/spe11' + self.version + '_C_time_series.csv')
-        for iblock in range(0,len(self.schedule),640):
-            pdlist = list()
-            pool = mp.Pool(processes=64)
-            df = pd.concat(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule[iblock:iblock+640]), ignore_index=True)
-            pool.close()
-            pool.join()
-            #df = pd.concat(pdlist, ignore_index=True)
+        df = pd.DataFrame()
+        for i,times in enumerate(self.schedule):
+            df = pd.concat([df, self._thread_this_(ifile, olist_, ff, times)],ignore_index=True)
             df.sort_values(by=['t[s]'])
-            print(f'writing at /{directory}/spe11{self.version}_{iblock+(off:=0)}_time_series.csv')
-            df.to_csv('/' + directory + '/spe11' + self.version + f'_{iblock+(off:=0)}_time_series.csv')
+        print(f'writing at /{directory}/spe11{self.version}_time_series.csv')
+        df.to_csv('/' + directory + '/spe11' + self.version + '_time_series.csv')
+        # for iblock in range(0,len(self.schedule),640):
+        #     pdlist = list()
+        #     pool = mp.Pool(processes=64)
+        #     df = pd.concat(pool.map(partial(self._thread_this_, ifile, olist_, ff), self.schedule[iblock:iblock+640]), ignore_index=True)
+        #     pool.close()
+        #     pool.join()
+        #     #df = pd.concat(pdlist, ignore_index=True)
+        #     df.sort_values(by=['t[s]'])
+        #     print(f'writing at /{directory}/spe11{self.version}_{iblock+(off:=0)}_time_series.csv')
+        #     df.to_csv('/' + directory + '/spe11' + self.version + f'_{iblock+(off:=0)}_time_series.csv')
         #if use_smry:
         #    df = self._from_opm_rst_smry(ifile)
         #else:
@@ -333,7 +335,7 @@ class Sparse_Data(Data):
     def _plot_(self, directory):
 
         import pandas as pd
-        df = pd.read_csv('./' + directory + '/spe11' + self.version + '_time_series.csv')
+        df = pd.read_csv( directory + '/spe11' + self.version + '_time_series.csv')
         fig, axs = plt.subplots(2, 2)
         (time_name, time_unit), (mass_name, mass_unit), (pressure_name, pressure_unit) = self.converters
         # pressures
@@ -377,11 +379,11 @@ class Sparse_Data(Data):
         # boxC
         axs[1][1].set_xscale('log')
         axs[1][1].set_xlim([1,1000])
-        axs[1][1].plot(df['t[s]'].to_numpy() / time_unit, df['M_C[m]'].to_numpy(), label='M_C[m]')
+        axs[1][1].plot(df['t[s]'].to_numpy() / time_unit, df['M_Cj[m]'].to_numpy(), label='M_Cb[m]')
         axs[1][1].legend()
         axs[1][1].set_title('boxC')
 
-        fig.savefig('./' + directory + '/spe11' + self.version + '_timeseries.png', bbox_inches='tight')
+        fig.savefig( directory + '/spe11' + self.version + '_timeseries.png', bbox_inches='tight')
 
 
     def _from_opm_rst_smry(self,ifile) -> pd.DataFrame:

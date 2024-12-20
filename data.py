@@ -78,9 +78,9 @@ class Data(metaclass=ABCMeta):
                             'mTotal': 'rL*mCO2*poro*vol*satw + rG*poro*vol*satg'}
 
 
-        if version[0] in ['b', 'c']:
-            # as described
-            self.name_indirection['temperature'] = 'temp'
+        # if version[0] in ['b', 'c']:
+        #     # as described
+        #     self.name_indirection['temperature'] = 'temp'
 
     def _get_filename_(self, pvdfile, time):
         if len(self.data_sets) == 0:
