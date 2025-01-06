@@ -21,7 +21,8 @@ class Dense_Data(Data):
         if version[0] == 'b':
             self.phydims = (2.8 * 3000, 1., 1.2 * 1000)
             self.dims = (840, 1, 120)
-            self.offset = [0., 0., -1200.]
+            # self.offset = [0., 0., -1200.]
+            self.offset = [0., 0., 0.]
             #
             self.schedule = np.arange(0. * Conversion.SEC2YEAR, 1001 * Conversion.SEC2YEAR, 50 * Conversion.SEC2TENTHOFYEAR)
             #self.schedule = [ item * Conversion.SEC2YEAR for item in [50,200,400,600,885]]
@@ -54,7 +55,7 @@ class Dense_Data(Data):
         print(f'processing time {time}')
         pts_from_vtk, fields = self._process_time_(ifile, time, olist=olist_)
         # some lines for MC magic number
-        if self.version[0] == 'a':  # TODO change it when comes to thermal results
+        if self.version[0] == 'a' or self.version[0] == 'b':  # TODO change it when comes to thermal results
             fields['mCO2Max'] = ff(fields['pres'], 293) * fields['rL']
         else:
             # convert it to kgCO2/m3Brine
@@ -93,10 +94,12 @@ class Dense_Data(Data):
 
         #pool = mp.Pool()
         self._read_pvd_(ifile)
-        with ThreadPoolExecutor(max_workers=4) as pool:
-          pool.map(partial(self._thread_this_, directory, ifile, ff, olist_), range(len(self.schedule)))
+        # with ThreadPoolExecutor(max_workers=1) as pool:
+        #   pool.map(partial(self._thread_this_, directory, ifile, ff, olist_), range(len(self.schedule)))
         #pool.close()
         #pool.join()
+        for i,_ in enumerate(self.schedule):
+            self._thread_this_(directory,ifile,ff,olist_,i)
 
         # # to plot as would be printed
         baseFileName = directory + '/plot'
@@ -110,10 +113,19 @@ class Dense_Data(Data):
         csv_keys_translation = {'x': '# #x[m]', 'y': 'y[m]',
                                 'z': ' z[m]',
                                 'satg': ' gas saturation[-]',
-                                'mCO2': ' mass fraction of CO2 in liquid[-]',
-                                'temp': ' temperature[C]'}
+                                'mCO2': ' mass fraction of CO2 in liquid[-]'}
 
-        # for itime, time in enumerate(self.schedule[::int(len(self.schedule) / 10)][1:]):
+        for itime, time in enumerate(self.schedule):
+            import pandas as pd
+            fname = '/' + directory + '/spatial_map_' + "{time:2}".format(
+                time= int(time / self.filename_converter)) + self.filename_marker + '.csv'
+            data = pd.read_csv(fname)
+            data = data.drop(0) # miss write from numpy
+            fn = lambda key : data[csv_keys_translation[key]]
+            self._plot_((itime, time), fig, fn, self.dims)
+
+        for key, _ in fig.items():
+            fig[key].savefig(f'{baseFileName}_{key}.png', bbox_inches='tight')
 
     def _write_(self, time, fn, directory):
 
