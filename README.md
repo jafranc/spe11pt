@@ -11,23 +11,18 @@ helper plots (representation of the data).
 
 ````python
 
-   python3 main.py -o /path/to/out_spe11a --spe a --dense --pvd /path/to/vtkOutput.pvd --solute /path/to/solubility_table.csv --units h g Pa
+   python3 main.py -o /path/to/out_spe11a --sim GEOS --spe a --dense --pvd /path/to/vtkOutput.pvd --solute /path/to/solubility_table.csv --units h g Pa
 
 ````
 
 
 ````python
 
-   python3 main.py -o /path/to/out_spe11b --spe b --sparse --pvd /path/to/vtkOutput.pvd  --units y t bar --solute /path/to/solubility_table.csv --units y kg bar
+   python3 main.py -o /path/to/out_spe11b --sim GEOS --spe b --sparse --on-pvd --pvd /path/to/vtkOutput.pvd  --units y t bar --solute /path/to/solubility_table.csv --units y kg bar
 
 ````
 
-Similarly `Solver_Sparse` and `Solver_Dense` post-processes solver data from logs
-
-````python
-
-	python3 main.py -o /path/to/out_spe11b --spe b --sparsesolver --slurm /path/to/slurm-log.out --units y kg bar
-
-````
+The `--on-pvd` option overwrite the strict schedule and replace it by what is present in pvd file,
+then there is no more failure fetching for time that are asked to be reported but not present in pvd.
 
 _Note_ The 3d dense post-processing is not yet handled.
